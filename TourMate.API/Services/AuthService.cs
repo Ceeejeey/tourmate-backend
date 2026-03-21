@@ -25,6 +25,9 @@ public class AuthService : IAuthService
 
     public async Task<string> RegisterAsync(UserRegistrationDto dto)
     {
+        if (dto.Role?.ToLower() == "admin")
+            throw new Exception("Registration as admin is not permitted.");
+
         if (await _context.Users.AnyAsync(u => u.Email == dto.Email))
             throw new Exception("Email already exists");
 
@@ -53,6 +56,27 @@ public class AuthService : IAuthService
         if (user == null || !BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash))
         {
             throw new Exception("Invalid email or password");
+        }
+
+        if (user.Role == "admin") 
+        {
+            throw new Exception("Please use the admin login portal.");
+        }
+
+        return GenerateJwtToken(user);
+    }
+
+    public async Task<string> AdminLoginAsync(UserLoginDto dto)
+    {
+        var user = await _context.Users.SingleOrDefaultAsync(u => u.Email == dto.Email);
+        if (user == null || !BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash))
+        {
+            throw new Exception("Invalid email or password");
+        }
+
+        if (user.Role != "admin") 
+        {
+            throw new Exception("Unauthorized. Admin access only.");
         }
 
         return GenerateJwtToken(user);

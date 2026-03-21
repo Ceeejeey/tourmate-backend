@@ -88,4 +88,39 @@ public class UsersController : ControllerBase
 
         return Ok(new { message = "Profile updated successfully" });
     }
+
+    [HttpPut("me/status")]
+    public async Task<IActionResult> UpdateStatus([FromBody] UpdateStatusDto dto)
+    {
+        var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userIdString) || !int.TryParse(userIdString, out var userId))
+            return Unauthorized();
+
+        var user = await _context.Users.FindAsync(userId);
+        if (user == null) return NotFound("User not found");
+        if (user.Role != "guide") return Forbid();
+
+        user.IsAvailable = dto.IsAvailable;
+        await _context.SaveChangesAsync();
+
+        return Ok(new { message = "Status updated successfully", isAvailable = user.IsAvailable });
+    }
+
+    [HttpPut("me/location")]
+    public async Task<IActionResult> UpdateLocation([FromBody] UpdateLocationDto dto)
+    {
+        var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userIdString) || !int.TryParse(userIdString, out var userId))
+            return Unauthorized();
+
+        var user = await _context.Users.FindAsync(userId);
+        if (user == null) return NotFound("User not found");
+        if (user.Role != "guide") return Forbid();
+
+        user.Latitude = dto.Latitude;
+        user.Longitude = dto.Longitude;
+        await _context.SaveChangesAsync();
+
+        return Ok(new { message = "Location updated successfully", latitude = user.Latitude, longitude = user.Longitude });
+    }
 }

@@ -44,4 +44,18 @@ public class AuthController : ControllerBase
             return Unauthorized(new { message = ex.Message });
         }
     }
+
+    [HttpPost("admin-login")]
+    public async Task<IActionResult> AdminLogin([FromBody] UserLoginDto request)
+    {
+        try
+        {
+            var token = await _authService.AdminLoginAsync(request);
+            return Ok(new { token });
+        }
+        catch (Exception ex)
+        {
+            return Unauthorized(new { message = ex.Message });
+        }
+    }
 }
