@@ -1,0 +1,42 @@
+# Ignore build outputs
+bin/
+obj/
+**/bin/
+**/obj/
+
+# Visual Studio / VS Code
+.vs/
+.vscode/
+
+# Rider
+.idea/
+
+# User-specific files
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Logs and databases
+*.log
+*.sqlite
+*.db
+
+# NuGet
+*.nupkg
+.packages/
+.nuget/
+
+# ASP.NET Core local settings (may contain secrets)
+appsettings.*.json
+
+# Publish output
+Publish/
+publish/
+
+# Temporary files
+*.DS_Store
+Thumbs.db
+
+# Misc
+*.pid
