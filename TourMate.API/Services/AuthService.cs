@@ -1,8 +1,10 @@
 using System;
 using System.IdentityModel.Tokens.Jwt;
+using System.IO;
 using System.Security.Claims;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
@@ -16,38 +18,108 @@ public class AuthService : IAuthService
 {
     private readonly AppDbContext _context;
     private readonly IConfiguration _configuration;
+    private readonly IHttpContextAccessor _httpContextAccessor;
 
-    public AuthService(AppDbContext context, IConfiguration configuration)
+    public AuthService(AppDbContext context, IConfiguration configuration, IHttpContextAccessor httpContextAccessor)
     {
         _context = context;
         _configuration = configuration;
+        _httpContextAccessor = httpContextAccessor;
     }
 
-    public async Task<string> RegisterAsync(UserRegistrationDto dto)
+    private async Task<string?> SaveProfilePhotoAsync(IFormFile? photo)
     {
-        if (dto.Role?.ToLower() == "admin")
-            throw new Exception("Registration as admin is not permitted.");
+        if (photo == null || photo.Length == 0)
+            return null;
 
+        var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "profiles");
+        if (!Directory.Exists(uploadsFolder))
+            Directory.CreateDirectory(uploadsFolder);
+
+        var uniqueFileName = Guid.NewGuid().ToString() + "_" + photo.FileName;
+        var filePath = Path.Combine(uploadsFolder, uniqueFileName);
+
+        using (var fileStream = new FileStream(filePath, FileMode.Create))
+        {
+            await photo.CopyToAsync(fileStream);
+        }
+
+        var request = _httpContextAccessor.HttpContext?.Request;
+        var baseUrl = $"{request?.Scheme}://{request?.Host}";
+        
+        return $"{baseUrl}/uploads/profiles/{uniqueFileName}";
+    }
+
+    public async Task<object> RegisterTouristAsync(TouristRegistrationDto dto)
+    {
         if (await _context.Users.AnyAsync(u => u.Email == dto.Email))
             throw new Exception("Email already exists");
+
+        var photoUrl = await SaveProfilePhotoAsync(dto.ProfilePhoto);
 
         var user = new User
         {
             Name = dto.Name,
             Email = dto.Email,
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password),
-            Role = string.IsNullOrEmpty(dto.Role) ? "tourist" : dto.Role,
+            Role = "tourist",
             Phone = dto.Phone,
             Nationality = dto.Nationality,
-            ServiceArea = dto.ServiceArea,
-            Languages = dto.Languages,
-            Experience = dto.Experience
+            Avatar = photoUrl
         };
 
         _context.Users.Add(user);
         await _context.SaveChangesAsync();
 
-        return "User registered successfully";
+        return new
+        {
+            id = user.Id,
+            name = user.Name,
+            email = user.Email,
+            role = user.Role,
+            phone = user.Phone,
+            nationality = user.Nationality,
+            avatar = user.Avatar,
+            message = "Tourist registered successfully"
+        };
+    }
+
+    public async Task<object> RegisterGuideAsync(GuideRegistrationDto dto)
+    {
+        if (await _context.Users.AnyAsync(u => u.Email == dto.Email))
+            throw new Exception("Email already exists");
+
+        var photoUrl = await SaveProfilePhotoAsync(dto.ProfilePhoto);
+
+        var user = new User
+        {
+            Name = dto.Name,
+            Email = dto.Email,
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password),
+            Role = "guide",
+            Phone = dto.Phone,
+            ServiceArea = dto.ServiceArea,
+            Languages = dto.Languages,
+            Experience = dto.Experience,
+            Avatar = photoUrl
+        };
+
+        _context.Users.Add(user);
+        await _context.SaveChangesAsync();
+
+        return new
+        {
+            id = user.Id,
+            name = user.Name,
+            email = user.Email,
+            role = user.Role,
+            phone = user.Phone,
+            serviceArea = user.ServiceArea,
+            languages = user.Languages,
+            experience = user.Experience,
+            avatar = user.Avatar,
+            message = "Guide registered successfully"
+        };
     }
 
     public async Task<string> LoginAsync(UserLoginDto dto)
@@ -61,6 +133,11 @@ public class AuthService : IAuthService
         if (user.Role == "admin") 
         {
             throw new Exception("Please use the admin login portal.");
+        }
+        
+        if (!string.IsNullOrEmpty(dto.Role) && dto.Role.ToLower() != user.Role.ToLower())
+        {
+            throw new Exception($"Invalid role selected. This account is registered as a {user.Role}.");
         }
 
         return GenerateJwtToken(user);

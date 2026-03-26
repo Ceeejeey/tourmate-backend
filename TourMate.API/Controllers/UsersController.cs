@@ -1,3 +1,4 @@
+using System;
 using System.Threading.Tasks;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
@@ -26,7 +27,15 @@ public class UsersController : ControllerBase
     {
         var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (string.IsNullOrEmpty(userIdString) || !int.TryParse(userIdString, out var userId))
-            return Unauthorized();
+        {
+            return Unauthorized(new
+            {
+                statusCode = 401,
+                message = "Unauthorized: Invalid or missing authentication token",
+                error = "Unauthorized",
+                timestamp = DateTime.UtcNow
+            });
+        }
 
         var user = await _context.Users.FindAsync(userId);
         if (user == null) return NotFound("User not found");
@@ -60,10 +69,24 @@ public class UsersController : ControllerBase
     {
         var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (string.IsNullOrEmpty(userIdString) || !int.TryParse(userIdString, out var userId))
-            return Unauthorized();
+        {
+            return Unauthorized(new
+            {
+                statusCode = 401,
+                message = "Unauthorized: You must be logged in to update your profile",
+                error = "Unauthorized",
+                timestamp = DateTime.UtcNow
+            });
+        }
 
         var user = await _context.Users.FindAsync(userId);
-        if (user == null) return NotFound("User not found");
+        if (user == null) return NotFound(new
+        {
+            statusCode = 404,
+            message = "User not found",
+            error = "NotFound",
+            timestamp = DateTime.UtcNow
+        });
 
         user.Name = dto.Name;
         user.Phone = dto.Phone;
@@ -86,7 +109,12 @@ public class UsersController : ControllerBase
 
         await _context.SaveChangesAsync();
 
-        return Ok(new { message = "Profile updated successfully" });
+        return Ok(new
+        {
+            statusCode = 200,
+            message = "Profile updated successfully",
+            timestamp = DateTime.UtcNow
+        });
     }
 
     [HttpPut("me/status")]
@@ -94,16 +122,43 @@ public class UsersController : ControllerBase
     {
         var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (string.IsNullOrEmpty(userIdString) || !int.TryParse(userIdString, out var userId))
-            return Unauthorized();
+        {
+            return Unauthorized(new
+            {
+                statusCode = 401,
+                message = "Unauthorized: You must be logged in to update your status",
+                error = "Unauthorized",
+                timestamp = DateTime.UtcNow
+            });
+        }
 
         var user = await _context.Users.FindAsync(userId);
-        if (user == null) return NotFound("User not found");
-        if (user.Role != "guide") return Forbid();
+        if (user == null) return NotFound(new
+        {
+            statusCode = 404,
+            message = "User not found",
+            error = "NotFound",
+            timestamp = DateTime.UtcNow
+        });
+
+        if (user.Role != "guide") return StatusCode(403, new
+        {
+            statusCode = 403,
+            message = "Forbidden: Only guides can update availability status",
+            error = "Forbidden",
+            timestamp = DateTime.UtcNow
+        });
 
         user.IsAvailable = dto.IsAvailable;
         await _context.SaveChangesAsync();
 
-        return Ok(new { message = "Status updated successfully", isAvailable = user.IsAvailable });
+        return Ok(new
+        {
+            statusCode = 200,
+            message = "Status updated successfully",
+            isAvailable = user.IsAvailable,
+            timestamp = DateTime.UtcNow
+        });
     }
 
     [HttpPut("me/location")]
@@ -111,16 +166,44 @@ public class UsersController : ControllerBase
     {
         var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (string.IsNullOrEmpty(userIdString) || !int.TryParse(userIdString, out var userId))
-            return Unauthorized();
+        {
+            return Unauthorized(new
+            {
+                statusCode = 401,
+                message = "Unauthorized: You must be logged in to update your location",
+                error = "Unauthorized",
+                timestamp = DateTime.UtcNow
+            });
+        }
 
         var user = await _context.Users.FindAsync(userId);
-        if (user == null) return NotFound("User not found");
-        if (user.Role != "guide") return Forbid();
+        if (user == null) return NotFound(new
+        {
+            statusCode = 404,
+            message = "User not found",
+            error = "NotFound",
+            timestamp = DateTime.UtcNow
+        });
+
+        if (user.Role != "guide") return StatusCode(403, new
+        {
+            statusCode = 403,
+            message = "Forbidden: Only guides can update location",
+            error = "Forbidden",
+            timestamp = DateTime.UtcNow
+        });
 
         user.Latitude = dto.Latitude;
         user.Longitude = dto.Longitude;
         await _context.SaveChangesAsync();
 
-        return Ok(new { message = "Location updated successfully", latitude = user.Latitude, longitude = user.Longitude });
+        return Ok(new
+        {
+            statusCode = 200,
+            message = "Location updated successfully",
+            latitude = user.Latitude,
+            longitude = user.Longitude,
+            timestamp = DateTime.UtcNow
+        });
     }
 }

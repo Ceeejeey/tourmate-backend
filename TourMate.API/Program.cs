@@ -15,6 +15,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 // Authentication services
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddHttpContextAccessor();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -26,6 +27,50 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 .GetBytes(builder.Configuration.GetSection("AppSettings:Token").Value!)),
             ValidateIssuer = false,
             ValidateAudience = false
+        };
+
+        // Custom event handlers for clear unauthorized responses
+        options.Events = new JwtBearerEvents
+        {
+            OnChallenge = context =>
+            {
+                // Skip the default behavior
+                context.HandleResponse();
+
+                // Set the response status code and content type
+                context.Response.StatusCode = 401;
+                context.Response.ContentType = "application/json";
+
+                // Determine the error message
+                var errorMessage = "Unauthorized: Authentication token is missing or invalid";
+                if (!string.IsNullOrEmpty(context.ErrorDescription))
+                {
+                    errorMessage = context.ErrorDescription;
+                }
+                else if (!string.IsNullOrEmpty(context.Error))
+                {
+                    errorMessage = $"Unauthorized: {context.Error}";
+                }
+
+                // Return JSON response
+                var result = System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    statusCode = 401,
+                    message = errorMessage,
+                    error = "Unauthorized",
+                    timestamp = DateTime.UtcNow
+                });
+
+                return context.Response.WriteAsync(result);
+            },
+            OnAuthenticationFailed = context =>
+            {
+                if (context.Exception.GetType() == typeof(SecurityTokenExpiredException))
+                {
+                    context.Response.Headers.Add("Token-Expired", "true");
+                }
+                return Task.CompletedTask;
+            }
         };
     });
 
@@ -46,6 +91,8 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
+app.UseStaticFiles();
 
 app.UseCors("AllowFrontend");
 app.UseHttpsRedirection();

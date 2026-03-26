@@ -6,7 +6,8 @@ namespace TourMate.API.Services;
 
 public interface IAuthService
 {
-    Task<string> RegisterAsync(UserRegistrationDto dto);
+    Task<object> RegisterTouristAsync(TouristRegistrationDto dto);
+    Task<object> RegisterGuideAsync(GuideRegistrationDto dto);
     Task<string> LoginAsync(UserLoginDto dto);
     Task<string> AdminLoginAsync(UserLoginDto dto);
 }

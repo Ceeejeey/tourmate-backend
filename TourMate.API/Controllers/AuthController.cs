@@ -17,13 +17,27 @@ public class AuthController : ControllerBase
         _authService = authService;
     }
 
-    [HttpPost("register")]
-    public async Task<IActionResult> Register([FromBody] UserRegistrationDto request)
+    [HttpPost("register/tourist")]
+    public async Task<IActionResult> RegisterTourist([FromForm] TouristRegistrationDto request)
     {
         try
         {
-            var result = await _authService.RegisterAsync(request);
-            return Ok(new { message = result });
+            var result = await _authService.RegisterTouristAsync(request);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpPost("register/guide")]
+    public async Task<IActionResult> RegisterGuide([FromForm] GuideRegistrationDto request)
+    {
+        try
+        {
+            var result = await _authService.RegisterGuideAsync(request);
+            return Ok(result);
         }
         catch (Exception ex)
         {
