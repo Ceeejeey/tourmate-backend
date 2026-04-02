@@ -101,7 +101,8 @@ public class AuthService : IAuthService
             ServiceArea = dto.ServiceArea,
             Languages = dto.Languages,
             Experience = dto.Experience,
-            Avatar = photoUrl
+            Avatar = photoUrl,
+            Verified = false // Needs admin approval to login
         };
 
         _context.Users.Add(user);
@@ -138,6 +139,11 @@ public class AuthService : IAuthService
         if (!string.IsNullOrEmpty(dto.Role) && dto.Role.ToLower() != user.Role.ToLower())
         {
             throw new Exception($"Invalid role selected. This account is registered as a {user.Role}.");
+        }
+
+        if (user.Role == "guide" && user.Verified != true)
+        {
+            throw new Exception("wait for the admin approval");
         }
 
         return GenerateJwtToken(user);

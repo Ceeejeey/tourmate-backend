@@ -1,6 +1,7 @@
 using System;
 using System.Threading.Tasks;
 using System.Security.Claims;
+using System.Linq;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
@@ -205,5 +206,53 @@ public class UsersController : ControllerBase
             longitude = user.Longitude,
             timestamp = DateTime.UtcNow
         });
+    }
+
+    [HttpGet("guides")]
+    public async Task<IActionResult> GetAllGuides()
+    {
+        var guides = await _context.Users
+            .Where(u => u.Role == "guide")
+            .Select(u => new
+            {
+                id = u.Id.ToString(),
+                name = u.Name,
+                email = u.Email,
+                avatar = u.Avatar,
+                serviceArea = u.ServiceArea,
+                rating = u.Rating,
+                reviewCount = u.ReviewCount,
+                isAvailable = u.IsAvailable,
+                verified = u.Verified,
+                phone = u.Phone,
+                experience = u.Experience,
+                languages = string.IsNullOrEmpty(u.Languages) ? new string[0] : u.Languages.Split(',', System.StringSplitOptions.RemoveEmptyEntries),
+                skills = string.IsNullOrEmpty(u.Skills) ? new string[0] : u.Skills.Split(',', System.StringSplitOptions.RemoveEmptyEntries),
+                bio = u.Bio
+            })
+            .ToListAsync();
+
+        return Ok(guides);
+    }
+
+    [HttpPut("guides/{id}/verify")]
+    public async Task<IActionResult> ToggleGuideVerification(int id)
+    {
+        var userRole = User.FindFirstValue(ClaimTypes.Role);
+        if (userRole != "admin")
+        {
+            return StatusCode(403, new { message = "Forbidden: Admin access required" });
+        }
+
+        var guide = await _context.Users.FindAsync(id);
+        if (guide == null || guide.Role != "guide")
+        {
+            return NotFound(new { message = "Guide not found" });
+        }
+
+        guide.Verified = !(guide.Verified ?? false);
+        await _context.SaveChangesAsync();
+
+        return Ok(new { message = "Verification status updated", verified = guide.Verified });
     }
 }
