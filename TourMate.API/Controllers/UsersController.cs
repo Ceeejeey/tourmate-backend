@@ -222,10 +222,13 @@ public class UsersController : ControllerBase
                 serviceArea = u.ServiceArea,
                 rating = u.Rating,
                 reviewCount = u.ReviewCount,
+                pricePerSession = u.PricePerSession,
                 isAvailable = u.IsAvailable,
                 verified = u.Verified,
                 phone = u.Phone,
                 experience = u.Experience,
+                latitude = u.Latitude,
+                longitude = u.Longitude,
                 languages = string.IsNullOrEmpty(u.Languages) ? new string[0] : u.Languages.Split(',', System.StringSplitOptions.RemoveEmptyEntries),
                 skills = string.IsNullOrEmpty(u.Skills) ? new string[0] : u.Skills.Split(',', System.StringSplitOptions.RemoveEmptyEntries),
                 bio = u.Bio
