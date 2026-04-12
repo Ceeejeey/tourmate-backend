@@ -4,6 +4,9 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using TourMate.API.Data;
 using TourMate.API.Services;
+using TourMate.API.Hubs;
+using System.Threading.Tasks;
+using System;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,6 +19,8 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 // Authentication services
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddHttpContextAccessor();
+
+builder.Services.AddSignalR();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -32,16 +37,23 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         // Custom event handlers for clear unauthorized responses
         options.Events = new JwtBearerEvents
         {
+            OnMessageReceived = context =>
+            {
+                var accessToken = context.Request.Query["access_token"];
+                var path = context.HttpContext.Request.Path;
+                if (!string.IsNullOrEmpty(accessToken) &&
+                    (path.StartsWithSegments("/chathub")))
+                {
+                    context.Token = accessToken;
+                }
+                return Task.CompletedTask;
+            },
             OnChallenge = context =>
             {
-                // Skip the default behavior
                 context.HandleResponse();
-
-                // Set the response status code and content type
                 context.Response.StatusCode = 401;
                 context.Response.ContentType = "application/json";
 
-                // Determine the error message
                 var errorMessage = "Unauthorized: Authentication token is missing or invalid";
                 if (!string.IsNullOrEmpty(context.ErrorDescription))
                 {
@@ -52,7 +64,6 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                     errorMessage = $"Unauthorized: {context.Error}";
                 }
 
-                // Return JSON response
                 var result = System.Text.Json.JsonSerializer.Serialize(new
                 {
                     statusCode = 401,
@@ -60,7 +71,6 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                     error = "Unauthorized",
                     timestamp = DateTime.UtcNow
                 });
-
                 return context.Response.WriteAsync(result);
             },
             OnAuthenticationFailed = context =>
@@ -75,9 +85,8 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 
 builder.Services.AddControllers();
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddCors(options => { options.AddPolicy("AllowFrontend", policy => { policy.WithOrigins("http://localhost:5173", "http://localhost:3000", "http://localhost:3001").AllowAnyHeader().AllowAnyMethod(); }); });
+builder.Services.AddCors(options => { options.AddPolicy("AllowFrontend", policy => { policy.WithOrigins("http://localhost:5173", "http://localhost:3000", "http://localhost:3001").AllowAnyHeader().AllowAnyMethod().AllowCredentials(); }); });
 builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
@@ -85,7 +94,6 @@ var app = builder.Build();
 // Seed database
 await DbSeeder.SeedAdminAsync(app.Services);
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -98,9 +106,9 @@ app.UseCors("AllowFrontend");
 app.UseHttpsRedirection();
 
 app.UseAuthentication();
-
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapHub<ChatHub>("/chathub");
 
 app.Run();
