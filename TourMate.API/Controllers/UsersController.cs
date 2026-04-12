@@ -186,10 +186,11 @@ public class UsersController : ControllerBase
             timestamp = DateTime.UtcNow
         });
 
-        if (user.Role != "guide") return StatusCode(403, new
+        // Allow both guides and tourists to update their locations
+        if (user.Role != "guide" && user.Role != "tourist") return StatusCode(403, new
         {
             statusCode = 403,
-            message = "Forbidden: Only guides can update location",
+            message = "Forbidden: Only guides and tourists can update location",
             error = "Forbidden",
             timestamp = DateTime.UtcNow
         });

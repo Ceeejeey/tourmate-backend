@@ -89,8 +89,8 @@ public class BookingsController : ControllerBase
                 b.Status,
                 b.TotalPrice,
                 b.Notes,
-                Guide = new { b.Guide.Id, b.Guide.Name, b.Guide.Avatar, b.Guide.ServiceArea, b.Guide.Phone },
-                Tourist = new { b.Tourist.Id, b.Tourist.Name, b.Tourist.Avatar, b.Tourist.Phone }
+                Guide = new { b.Guide.Id, b.Guide.Name, b.Guide.Avatar, b.Guide.ServiceArea, b.Guide.Phone, b.Guide.Latitude, b.Guide.Longitude },
+                Tourist = new { b.Tourist.Id, b.Tourist.Name, b.Tourist.Avatar, b.Tourist.Phone, b.Tourist.Latitude, b.Tourist.Longitude }
             })
             .OrderByDescending(b => b.BookingDate)
             .ToListAsync();
