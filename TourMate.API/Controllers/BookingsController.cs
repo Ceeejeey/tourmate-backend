@@ -87,6 +87,8 @@ public class BookingsController : ControllerBase
                 b.TouristId,
                 b.BookingDate,
                 b.Status,
+                b.PaymentStatus,
+                b.IsReviewed,
                 b.TotalPrice,
                 b.Notes,
                 Guide = new { b.Guide.Id, b.Guide.Name, b.Guide.Avatar, b.Guide.ServiceArea, b.Guide.Phone, b.Guide.Latitude, b.Guide.Longitude },

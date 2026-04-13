@@ -12,6 +12,7 @@ public class Booking
     public string PaymentStatus { get; set; } = "pending"; // pending, paid, refunded
     public decimal TotalPrice { get; set; }
     public string? Notes { get; set; }
+    public bool IsReviewed { get; set; } = false;
     
     // Navigation properties
     public User? Tourist { get; set; }
