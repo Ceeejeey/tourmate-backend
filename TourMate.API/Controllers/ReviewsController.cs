@@ -102,6 +102,36 @@ public class ReviewsController : ControllerBase
 
         return Ok(reviews);
     }
+
+    [HttpGet("all")]
+    public async Task<IActionResult> GetAllReviews()
+    {
+        var userRole = User.FindFirstValue(ClaimTypes.Role);
+        if (userRole != "admin")
+        {
+            return StatusCode(403, new { message = "Forbidden: Admin access required" });
+        }
+
+        var reviews = await _context.Reviews
+            .Include(r => r.Tourist)
+            .Include(r => r.Guide)
+            .OrderByDescending(r => r.Date)
+            .Select(r => new {
+                id = r.Id,
+                touristId = r.TouristId,
+                touristName = r.Tourist != null ? r.Tourist.Name : "N/A",
+                guideId = r.GuideId,
+                guideName = r.Guide != null ? r.Guide.Name : "N/A",
+                rating = r.Rating,
+                comment = r.Comment,
+                createdAt = r.Date,
+                date = r.Date,
+                bookingId = r.BookingId
+            })
+            .ToListAsync();
+
+        return Ok(reviews);
+    }
 }
 
 public class CreateReviewDto
