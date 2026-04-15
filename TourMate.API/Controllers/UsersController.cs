@@ -259,4 +259,50 @@ public class UsersController : ControllerBase
 
         return Ok(new { message = "Verification status updated", verified = guide.Verified });
     }
+
+    [HttpGet("tourists")]
+    public async Task<IActionResult> GetAllTourists()
+    {
+        var userRole = User.FindFirstValue(ClaimTypes.Role);
+        if (userRole != "admin")
+        {
+            return StatusCode(403, new { message = "Forbidden: Admin access required" });
+        }
+
+        var tourists = await _context.Users
+            .Where(u => u.Role == "tourist")
+            .Select(u => new
+            {
+                id = u.Id.ToString(),
+                name = u.Name,
+                email = u.Email,
+                avatar = u.Avatar,
+                phone = u.Phone,
+                nationality = u.Nationality
+            })
+            .ToListAsync();
+
+        return Ok(tourists);
+    }
+
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> DeleteUser(int id)
+    {
+        var userRole = User.FindFirstValue(ClaimTypes.Role);
+        if (userRole != "admin")
+        {
+            return StatusCode(403, new { message = "Forbidden: Admin access required" });
+        }
+
+        var user = await _context.Users.FindAsync(id);
+        if (user == null)
+        {
+            return NotFound(new { message = "User not found" });
+        }
+
+        _context.Users.Remove(user);
+        await _context.SaveChangesAsync();
+
+        return Ok(new { message = "User deleted successfully" });
+    }
 }

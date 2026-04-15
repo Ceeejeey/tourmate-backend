@@ -25,23 +25,48 @@ public class PaymentsController : ControllerBase
     [HttpGet("history")]
     public async Task<IActionResult> GetPaymentHistory()
     {
+        var role = User.FindFirstValue(ClaimTypes.Role);
         var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrEmpty(userIdString) || !int.TryParse(userIdString, out var userId))
-            return Unauthorized();
+        
+        int userId = 0;
+        if (role != "admin")
+        {
+            if (string.IsNullOrEmpty(userIdString) || !int.TryParse(userIdString, out userId))
+                return Unauthorized();
+        }
 
         var query = _context.Payments
             .Include(p => p.Booking)
             .ThenInclude(b => b.Guide)
+            .Include(p => p.Booking)
+            .ThenInclude(b => b.Tourist)
             .AsQueryable();
             
-        var role = User.FindFirstValue(ClaimTypes.Role);
         if (role == "tourist") {
             query = query.Where(p => p.Booking.TouristId == userId);
         } else if (role == "guide") {
             query = query.Where(p => p.Booking.GuideId == userId);
+        } else if (role != "admin") {
+            return StatusCode(403);
         }
 
-        var payments = await query.OrderByDescending(p => p.Date).ToListAsync();
+        var payments = await query.OrderByDescending(p => p.Date)
+            .Select(p => new {
+                p.Id,
+                p.BookingId,
+                p.Amount,
+                p.Date,
+                p.Status,
+                p.Method,
+                Booking = new {
+                    Id = p.Booking.Id,
+                    GuideId = p.Booking.GuideId,
+                    TouristId = p.Booking.TouristId,
+                    Guide = new { Name = p.Booking.Guide.Name },
+                    Tourist = new { Name = p.Booking.Tourist.Name }
+                }
+            })
+            .ToListAsync();
         return Ok(payments);
     }
 
