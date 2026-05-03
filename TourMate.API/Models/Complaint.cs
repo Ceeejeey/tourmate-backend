@@ -10,6 +10,7 @@ public class Complaint
     public int GuideId { get; set; }
     public string Reason { get; set; } = string.Empty;
     public string Status { get; set; } = "pending"; // pending, resolved, dismissed
+    public string? AdminNote { get; set; } // Note provided by the admin when resolving/dismissing
     public DateTime Date { get; set; } = DateTime.UtcNow;
     
     public Booking? Booking { get; set; }
