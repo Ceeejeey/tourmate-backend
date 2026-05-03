@@ -10,4 +10,5 @@ public interface IAuthService
     Task<object> RegisterGuideAsync(GuideRegistrationDto dto);
     Task<string> LoginAsync(UserLoginDto dto);
     Task<string> AdminLoginAsync(UserLoginDto dto);
+    Task<object> GoogleLoginAsync(GoogleLoginDto dto);
 }

@@ -55,7 +55,7 @@ public class AuthService : IAuthService
         if (await _context.Users.AnyAsync(u => u.Email == dto.Email))
             throw new Exception("Email already exists");
 
-        var photoUrl = await SaveProfilePhotoAsync(dto.ProfilePhoto);
+        var photoUrl = !string.IsNullOrEmpty(dto.AvatarUrl) ? dto.AvatarUrl : await SaveProfilePhotoAsync(dto.ProfilePhoto);
 
         var user = new User
         {
@@ -89,7 +89,7 @@ public class AuthService : IAuthService
         if (await _context.Users.AnyAsync(u => u.Email == dto.Email))
             throw new Exception("Email already exists");
 
-        var photoUrl = await SaveProfilePhotoAsync(dto.ProfilePhoto);
+        var photoUrl = !string.IsNullOrEmpty(dto.AvatarUrl) ? dto.AvatarUrl : await SaveProfilePhotoAsync(dto.ProfilePhoto);
 
         var user = new User
         {
@@ -163,6 +163,52 @@ public class AuthService : IAuthService
         }
 
         return GenerateJwtToken(user);
+    }
+
+    public async Task<object> GoogleLoginAsync(GoogleLoginDto dto)
+    {
+        var user = await _context.Users.SingleOrDefaultAsync(u => u.Email == dto.Email);
+        
+        if (user == null)
+        {
+            // User doesn't exist yet, so they need to complete registration (pick role, details)
+            return new
+            {
+                RequiresRegistration = true,
+                Email = dto.Email,
+                Name = dto.Name,
+                AvatarUrl = dto.AvatarUrl,
+                Role = dto.Role
+            };
+        }
+
+        // Check if the requested role matches their registered role
+        if (!string.IsNullOrEmpty(dto.Role) && dto.Role.ToLower() != user.Role.ToLower())
+        {
+            throw new Exception($"Invalid role selected. This account is registered as a {user.Role}.");
+        }
+
+        // If they exist but it's a guide pending approval
+        if (user.Role == "guide" && user.Verified != true)
+        {
+            throw new Exception("wait for the admin approval");
+        }
+
+        var token = GenerateJwtToken(user);
+        
+        return new
+        {
+            RequiresRegistration = false,
+            Token = token,
+            User = new
+            {
+                id = user.Id,
+                name = user.Name,
+                email = user.Email,
+                role = user.Role,
+                avatar = user.Avatar
+            }
+        };
     }
 
     private string GenerateJwtToken(User user)

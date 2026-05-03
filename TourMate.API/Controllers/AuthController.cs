@@ -59,6 +59,20 @@ public class AuthController : ControllerBase
         }
     }
 
+    [HttpPost("google-login")]
+    public async Task<IActionResult> GoogleLogin([FromBody] GoogleLoginDto request)
+    {
+        try
+        {
+            var result = await _authService.GoogleLoginAsync(request);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
     [HttpPost("admin-login")]
     public async Task<IActionResult> AdminLogin([FromBody] UserLoginDto request)
     {

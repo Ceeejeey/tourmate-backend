@@ -28,4 +28,5 @@ public class GuideRegistrationDto
     public string Experience { get; set; } = string.Empty;
 
     public Microsoft.AspNetCore.Http.IFormFile? ProfilePhoto { get; set; }
+    public string? AvatarUrl { get; set; }
 }

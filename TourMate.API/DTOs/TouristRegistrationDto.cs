@@ -22,4 +22,5 @@ public class TouristRegistrationDto
     public string Nationality { get; set; } = string.Empty;
 
     public Microsoft.AspNetCore.Http.IFormFile? ProfilePhoto { get; set; }
+    public string? AvatarUrl { get; set; }
 }
