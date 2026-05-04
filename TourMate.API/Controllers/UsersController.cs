@@ -9,6 +9,9 @@ using TourMate.API.Data;
 using TourMate.API.DTOs;
 using TourMate.API.Models;
 
+using Microsoft.AspNetCore.Http;
+using System.IO;
+
 namespace TourMate.API.Controllers;
 
 [ApiController]
@@ -118,6 +121,39 @@ public class UsersController : ControllerBase
         });
     }
 
+    [HttpPost("me/avatar")]
+    public async Task<IActionResult> UploadAvatar(IFormFile file)
+    {
+        var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userIdString) || !int.TryParse(userIdString, out var userId))
+            return Unauthorized(new { message = "Unauthorized" });
+
+        if (file == null || file.Length == 0)
+            return BadRequest(new { message = "File is empty" });
+
+        var user = await _context.Users.FindAsync(userId);
+        if (user == null) return NotFound(new { message = "User not found" });
+
+        var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "profiles");
+        if (!Directory.Exists(uploadsFolder)) Directory.CreateDirectory(uploadsFolder);
+
+        var uniqueFileName = Guid.NewGuid().ToString() + "_" + file.FileName;
+        var filePath = Path.Combine(uploadsFolder, uniqueFileName);
+
+        using (var fileStream = new FileStream(filePath, FileMode.Create))
+        {
+            await file.CopyToAsync(fileStream);
+        }
+
+        var baseUrl = $"{Request.Scheme}://{Request.Host}";
+        var photoUrl = $"{baseUrl}/uploads/profiles/{uniqueFileName}";
+
+        user.Avatar = photoUrl;
+        await _context.SaveChangesAsync();
+
+        return Ok(new { avatarUrl = photoUrl, message = "Avatar uploaded successfully" });
+    }
+
     [HttpPut("me/status")]
     public async Task<IActionResult> UpdateStatus([FromBody] UpdateStatusDto dto)
     {
@@ -206,6 +242,23 @@ public class UsersController : ControllerBase
             latitude = user.Latitude,
             longitude = user.Longitude,
             timestamp = DateTime.UtcNow
+        });
+    }
+
+    [HttpGet("{id}")]
+    public async Task<IActionResult> GetUserById(int id)
+    {
+        var user = await _context.Users.FindAsync(id);
+        if (user == null) return NotFound(new { message = "User not found" });
+
+        return Ok(new
+        {
+            id = user.Id,
+            name = user.Name,
+            email = user.Email,
+            role = user.Role,
+            avatar = user.Avatar,
+            phone = user.Phone
         });
     }
 

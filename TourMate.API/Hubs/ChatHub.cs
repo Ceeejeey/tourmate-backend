@@ -16,10 +16,29 @@ public class ChatHub : Hub
 {
     private readonly AppDbContext _context;
     private static readonly ConcurrentDictionary<int, string> OnlineUsers = new();
+    private static readonly ConcurrentDictionary<int, bool> HiddenUsers = new();
 
     public ChatHub(AppDbContext context)
     {
         _context = context;
+    }
+
+    public async Task SetVisibility(bool isVisible)
+    {
+        var userIdStr = Context.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (int.TryParse(userIdStr, out int userId))
+        {
+            if (isVisible)
+            {
+                HiddenUsers.TryRemove(userId, out _);
+                await Clients.All.SendAsync("UserOnline", userId);
+            }
+            else
+            {
+                HiddenUsers[userId] = true;
+                await Clients.All.SendAsync("UserOffline", userId);
+            }
+        }
     }
 
     public override async Task OnConnectedAsync()
@@ -28,7 +47,10 @@ public class ChatHub : Hub
         if (int.TryParse(userIdStr, out int userId))
         {
             OnlineUsers[userId] = Context.ConnectionId;
-            await Clients.All.SendAsync("UserOnline", userId);
+            if (!HiddenUsers.ContainsKey(userId))
+            {
+                await Clients.All.SendAsync("UserOnline", userId);
+            }
         }
         await base.OnConnectedAsync();
     }
@@ -39,14 +61,17 @@ public class ChatHub : Hub
         if (int.TryParse(userIdStr, out int userId))
         {
             OnlineUsers.TryRemove(userId, out _);
-            await Clients.All.SendAsync("UserOffline", userId);
+            if (!HiddenUsers.ContainsKey(userId))
+            {
+                await Clients.All.SendAsync("UserOffline", userId);
+            }
         }
         await base.OnDisconnectedAsync(exception);
     }
 
     public Task<IEnumerable<int>> GetOnlineUsers()
     {
-        return Task.FromResult(OnlineUsers.Keys.AsEnumerable());
+        return Task.FromResult(OnlineUsers.Keys.Where(id => !HiddenUsers.ContainsKey(id)).AsEnumerable());
     }
 
     public async Task SendMessage(int receiverId, string content)
