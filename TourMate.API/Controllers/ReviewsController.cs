@@ -103,6 +103,28 @@ public class ReviewsController : ControllerBase
         return Ok(reviews);
     }
 
+    [HttpGet("guide/{guideId}")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetReviewsByGuide(int guideId)
+    {
+        var reviews = await _context.Reviews
+            .Include(r => r.Tourist)
+            .Where(r => r.GuideId == guideId)
+            .OrderByDescending(r => r.Date)
+            .Select(r => new {
+                id = r.Id,
+                touristId = r.TouristId.ToString(),
+                touristName = r.Tourist != null ? r.Tourist.Name : "Anonymous",
+                rating = r.Rating,
+                comment = r.Comment,
+                date = r.Date.ToString("yyyy-MM-dd"),
+                bookingId = r.BookingId
+            })
+            .ToListAsync();
+
+        return Ok(reviews);
+    }
+
     [HttpGet("all")]
     public async Task<IActionResult> GetAllReviews()
     {
